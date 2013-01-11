@@ -2,7 +2,7 @@ on early-init
     start ueventd
 
 on init
-    export PATH /sbin
+    export PATH /sbin:/system/bin
     export ANDROID_ROOT /system
     export ANDROID_DATA /data
     export EXTERNAL_STORAGE /sdcard
@@ -15,6 +15,9 @@ on init
     mkdir /cache
     mount tmpfs tmpfs /tmp/
 
+    mkdir /boot
+    mount vfat /dev/block/mmcblk0p1 /boot
+
 on boot
 
     ifup lo
@@ -26,13 +29,12 @@ on boot
 service ueventd /sbin/ueventd
     critical
 
+service adbd /sbin/adbd
+
+service console /system/bin/sh
+    console
+    user root
+    group log
+
 service recovery /sbin/recovery
 
-service adbd /sbin/adbd recovery
-    disabled
-
-on property:persist.service.adb.enable=1
-    start adbd
-
-on property:persist.service.adb.enable=0
-    stop adbd

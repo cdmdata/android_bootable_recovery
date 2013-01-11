@@ -219,7 +219,7 @@ get_args(int *argc, char ***argv) {
 
     // --> write the arguments we have back into the bootloader control block
     // always boot into recovery after this (until finish_recovery() is called)
-    strlcpy(boot.command, "boot-recovery", sizeof(boot.command));
+    strlcpy(boot.command, "recovery", sizeof(boot.command));
     strlcpy(boot.recovery, "recovery\n", sizeof(boot.recovery));
     int i;
     for (i = 1; i < *argc; ++i) {
@@ -233,7 +233,7 @@ static void
 set_sdcard_update_bootloader_message() {
     struct bootloader_message boot;
     memset(&boot, 0, sizeof(boot));
-    strlcpy(boot.command, "boot-recovery", sizeof(boot.command));
+    strlcpy(boot.command, "recovery", sizeof(boot.command));
     strlcpy(boot.recovery, "recovery\n", sizeof(boot.recovery));
     set_bootloader_message(&boot);
 }
@@ -283,21 +283,23 @@ finish_recovery(const char *send_intent) {
         }
     }
 
+    // Reset to mormal system boot so recovery won't cycle indefinitely.
+	struct bootloader_message boot;
+	memset(&boot, 0, sizeof(boot));
+	int ret = set_bootloader_message(&boot);
+	if (ret != 0)
+		ui_print("Failed wipe bootloader message\n");
+
+	// Remove the command file, so recovery won't repeat indefinitely.
+	if (ensure_path_mounted(COMMAND_FILE) != 0 ||
+		(unlink(COMMAND_FILE) && errno != ENOENT)) {
+		LOGW("Can't unlink %s\n", COMMAND_FILE);
+	}
+
     // Copy logs to cache so the system can find out what happened.
     copy_log_file(LOG_FILE, true);
     copy_log_file(LAST_LOG_FILE, false);
     chmod(LAST_LOG_FILE, 0640);
-
-    // Reset to mormal system boot so recovery won't cycle indefinitely.
-    struct bootloader_message boot;
-    memset(&boot, 0, sizeof(boot));
-    set_bootloader_message(&boot);
-
-    // Remove the command file, so recovery won't repeat indefinitely.
-    if (ensure_path_mounted(COMMAND_FILE) != 0 ||
-        (unlink(COMMAND_FILE) && errno != ENOENT)) {
-        LOGW("Can't unlink %s\n", COMMAND_FILE);
-    }
 
     sync();  // For good measure.
 }
@@ -640,7 +642,7 @@ wipe_data(int confirm) {
 static void
 prompt_and_wait() {
     char** headers = prepend_title((const char**)MENU_HEADERS);
-
+    ui_print("Entering recovery menu...\n");
     for (;;) {
         finish_recovery(NULL);
         ui_reset_progress();
@@ -729,6 +731,8 @@ main(int argc, char **argv) {
         }
     }
 
+    ui_show_text(1);
+
     device_recovery_start();
 
     printf("Command:");
@@ -809,8 +813,13 @@ main(int argc, char **argv) {
         status = INSTALL_ERROR;  // No command specified
     }
 
+//    printf("Going into prompt and wait!");
+//    ui_show_text(1);
+//    prompt_and_wait();
+
+    ui_print("Installation status : %d\n", status);
     if (status != INSTALL_SUCCESS) ui_set_background(BACKGROUND_ICON_ERROR);
-    if (status != INSTALL_SUCCESS || ui_text_visible()) {
+    if (status != INSTALL_SUCCESS && ui_text_visible()) {
         prompt_and_wait();
     }
     
@@ -818,6 +827,7 @@ main(int argc, char **argv) {
     finish_recovery(send_intent);
     ui_print("Rebooting...\n");
     sync();
+    sleep(2);
     reboot(RB_AUTOBOOT);
     return EXIT_SUCCESS;
 }

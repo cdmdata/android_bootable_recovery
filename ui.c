@@ -497,6 +497,7 @@ int ui_wait_key()
     }
 
     int key = key_queue[0];
+    printf("key:%d", key);
     memcpy(&key_queue[0], &key_queue[1], sizeof(int) * --key_queue_len);
     pthread_mutex_unlock(&key_queue_mutex);
     return key;

@@ -27,11 +27,22 @@ static int get_bootloader_message_mtd(struct bootloader_message *out, const Volu
 static int set_bootloader_message_mtd(const struct bootloader_message *in, const Volume* v);
 static int get_bootloader_message_block(struct bootloader_message *out, const Volume* v);
 static int set_bootloader_message_block(const struct bootloader_message *in, const Volume* v);
+static int get_bootloader_message_boot(struct bootloader_message *out, const Volume* v);
+static int set_bootloader_message_boot(const struct bootloader_message *in, const Volume* v);
 
 int get_bootloader_message(struct bootloader_message *out) {
-    Volume* v = volume_for_path("/misc");
-    if (v == NULL)
-	return -1;
+	int ret = -1;
+    Volume* v = volume_for_path("/boot");
+	if (v != NULL)
+		ret = get_bootloader_message_boot(out, v);
+
+	if (ret == 0) return ret;
+
+    v = volume_for_path("/misc");
+    if (v == NULL) {
+    	return -1;
+    }
+
     if (strcmp(v->fs_type, "mtd") == 0) {
         return get_bootloader_message_mtd(out, v);
     } else if (strcmp(v->fs_type, "emmc") == 0) {
@@ -42,9 +53,18 @@ int get_bootloader_message(struct bootloader_message *out) {
 }
 
 int set_bootloader_message(const struct bootloader_message *in) {
-    Volume* v = volume_for_path("/misc");
-    if (v == NULL)
-	return -1;
+	int ret = -1;
+    Volume* v = volume_for_path("/boot");
+	if (v != NULL)
+		ret = set_bootloader_message_boot(in, v);
+
+	if (ret == 0) return ret;
+
+    v = volume_for_path("/misc");
+    if (v == NULL){
+		return -1;
+    }
+
     if (strcmp(v->fs_type, "mtd") == 0) {
         return set_bootloader_message_mtd(in, v);
     } else if (strcmp(v->fs_type, "emmc") == 0) {
@@ -171,6 +191,56 @@ static int set_bootloader_message_block(const struct bootloader_message *in,
     }
     if (fclose(f) != 0) {
         LOGE("Failed closing %s\n(%s)\n", v->device, strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
+// ------------------------------------
+// BCB as hidden file on boot
+// ------------------------------------
+static int get_bootloader_message_boot(struct bootloader_message *out,
+                                        const Volume* v){
+	LOGD("get_bootloader_message_boot");
+
+	FILE* f = fopen("/boot/.bcb", "r");
+	if (f == NULL){
+		LOGE("Can't open %s\n(%s)\n", "/boot/.bcb", strerror(errno));
+		return -1;
+	}
+
+	struct bootloader_message temp;
+	int count = fread(&temp, sizeof(temp), 1, f);
+//	if (count != 1) {
+//		//LOGE("Failed reading %s\n(%s)\n", "/boot/.bcb", strerror(errno));
+//		return -1;
+//	}
+
+	if (fclose(f) != 0) {
+		LOGE("Failed closing %s\n(%s)\n", v->device, strerror(errno));
+		return -1;
+	}
+	memcpy(out, &temp, sizeof(temp));
+
+
+	return 0;
+
+}
+
+static int set_bootloader_message_boot(const struct bootloader_message *in,
+                                        const Volume* v) {
+    FILE* f = fopen("/boot/.bcb", "wb");
+    if (f == NULL) {
+        LOGE("Can't open %s\n(%s)\n", "/boot/.bcb", strerror(errno));
+        return -1;
+    }
+    int count = fwrite(in, sizeof(*in), 1, f);
+    if (count != 1) {
+        LOGE("Failed writing %s\n(%s)\n","/boot/.bcb", strerror(errno));
+        return -1;
+    }
+    if (fclose(f) != 0) {
+        LOGE("Failed closing %s\n(%s)\n", "/boot/.bcb", strerror(errno));
         return -1;
     }
     return 0;

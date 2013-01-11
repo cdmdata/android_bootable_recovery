@@ -6,8 +6,8 @@ echo "update package dir: $2"
 
 current_dir=`pwd`
 
-android_path=$current_dir/$1
-update_path=$current_dir/$2
+android_path=$1
+update_path=$2
 
 if [ -z $android_path ]; then
     usage
