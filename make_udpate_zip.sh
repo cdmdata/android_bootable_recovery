@@ -8,12 +8,17 @@ current_dir=`pwd`
 
 android_path=$1
 update_path=$2
+utc_stamp=$3
 
 if [ -z $android_path ]; then
     usage
 fi
 
 if [ -z $update_path ]; then
+    usage
+fi
+
+if [ -z $utc_stamp ]; then
     usage
 fi
 
@@ -43,19 +48,19 @@ java -jar $android_path/out/host/linux-x86/framework/dumpkey.jar $android_path/b
 cp keys $update_path/res/
 rm keys
 (cd $update_path
-    zip -rq $current_dir/update-n.zip res system files META-INF
+    zip -rq $current_dir/update-n.zip * res system files META-INF
 )
 echo "Signing..."
-java -jar  $android_path/out/host/linux-x86/framework/signapk.jar  -w $android_path/build/target/product/security/testkey.x509.pem $android_path/build/target/product/security/testkey.pk8 $current_dir/update-n.zip $current_dir/update.zip
+java -jar  $android_path/out/host/linux-x86/framework/signapk.jar  -w $android_path/build/target/product/security/testkey.x509.pem $android_path/build/target/product/security/testkey.pk8 $current_dir/update-n.zip $current_dir/update_$utc_stamp.zip
 
 rm update-n.zip
 echo "Done."
-echo "Your update.zip is under:$current_dir/update.zip"
+echo "Your update is under:$current_dir/update_$utc_stamp.zip"
 
 function usage {
     echo "usage:"
-    echo "make_update_zip.sh Your_android_path Your_update_package_file_path"
-    echo "eg: make_update_zip.sh ~/android/gingerbread/ ~/android/update/"
+    echo "make_update_zip.sh Your_android_path Your_update_package_file_path utc-timestamp"
+    echo "eg: make_update_zip.sh ~/android/gingerbread/ ~/android/update/ 1359396313"
 }
 	
 

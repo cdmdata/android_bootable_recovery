@@ -16,7 +16,7 @@ on init
     mount tmpfs tmpfs /tmp/
 
     mkdir /boot
-    mount vfat /dev/block/mmcblk0p1 /boot
+    mount vfat /dev/block/mmcblk1p1 /boot
 
 on boot
 
