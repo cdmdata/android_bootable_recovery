@@ -29,7 +29,7 @@ if [ ! -f META-INF/com/google/android/updater-script ]; then
     echo "META-INF/com/google/android/updater-script"
     echo "please check, notice the file name is: updater-script, not old update-script"
     cd - >/dev/null
-    exit
+    return
 fi
 
 if [ ! -f META-INF/com/google/android/update-binary ]; then
@@ -37,7 +37,7 @@ if [ ! -f META-INF/com/google/android/update-binary ]; then
     echo "META-INF/com/google/android/update-binary"
     echo "please check."
     cd - >/dev/null
-    exit
+    return
 fi
 
 cd - >/dev/null
